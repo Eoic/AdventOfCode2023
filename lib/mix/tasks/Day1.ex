@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Day1 do
   use Mix.Task
+  import InputUtils
 
   @input_path "input.txt"
   @digits %{
@@ -13,15 +14,6 @@ defmodule Mix.Tasks.Day1 do
     "eight" => "8",
     "nine" => "9"
   }
-
-  def read_input() do
-    __ENV__.file
-    |> Path.dirname()
-    |> Path.join(@input_path)
-    |> File.read!()
-    |> String.trim_trailing("\n")
-    |> String.split("\n")
-  end
 
   def find_digit(substring, include_spelled) do
     @digits
@@ -71,7 +63,7 @@ defmodule Mix.Tasks.Day1 do
   end
 
   def run(_) do
-    input = read_input()
+    input = read_input_into_lines(__ENV__.file, @input_path)
     IO.puts("Part one: #{part_one(input)}.")
     IO.puts("Part two: #{part_two(input)}.")
   end
