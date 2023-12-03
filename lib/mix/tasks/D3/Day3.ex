@@ -1,12 +1,8 @@
-# TODO
-# Find digits nearby symbol position. Only check digits that are y - 1, y, y + 1 of symbol position.
-# Do the same digit processing as in part one.
-
 defmodule Mix.Tasks.Day3 do
   use Mix.Task
   import InputUtils
 
-  @input_path "input_sample.txt"
+  @input_path "input.txt"
   @digits Enum.map(0..9, &Integer.to_string/1)
 
   defp get_dimensions(map_input) do
@@ -129,26 +125,41 @@ defmodule Mix.Tasks.Day3 do
     end)
   end
 
-  def collect_adjacent_digits([x, y], digits) do
-    IO.puts("Collecting digits for symbol #{x}, #{y}.")
+  def collect_nearby_digits([_, y], digits) do
+    (y - 1)..(y + 1)
+    |> Enum.reduce([], fn y_position, axis_digits ->
+      if Map.has_key?(digits, y_position) do
+        axis_digits ++ [Map.get(digits, y_position)]
+      else
+        axis_digits
+      end
+    end)
+    |> Enum.flat_map(&Map.values/1)
   end
 
-  def find_gears(digits, symbols) do
+  def find_gear_ratios(digits, symbols) do
     symbols
     |> find_gear_positions()
     |> Enum.map(fn [x, y] ->
-      adjacent_digits = collect_adjacent_digits([x, y], digits)
-#      nearby_digits = find_nearby_digits(digits, y)
-#      IO.inspect(nearby_digits)
+      nearby_digits = collect_nearby_digits([x, y], digits)
 
-      []
+      adjacent_numbers =
+        Enum.filter(nearby_digits, fn number ->
+          number
+          |> Map.keys()
+          |> Enum.any?(fn digit_position -> has_adjacent_symbols(digit_position, %{[x, y] => "*"}) end)
+        end)
+
+      if length(adjacent_numbers) === 2 do
+        Enum.map(adjacent_numbers, &to_number/1) |> Enum.product()
+      end
     end)
-
-#    IO.inspect(digits, charlists: :as_lists)
+    |> Enum.reject(fn item -> item === nil end)
+    |> Enum.sum()
   end
 
-  defp to_number(numbers) do
-    numbers
+  defp to_number(digits) do
+    digits
     |> Map.to_list()
     |> Enum.sort_by(fn {[x, _], _} -> x end)
     |> Enum.map(fn {[_, _], value} -> value end)
@@ -164,14 +175,13 @@ defmodule Mix.Tasks.Day3 do
   end
 
   defp part_two(digits, symbols) do
-    find_gears(digits, symbols)
-    :noop
+    find_gear_ratios(digits, symbols)
   end
 
   def run(_) do
     input = read_input_into_lines(__ENV__.file, @input_path)
     {symbols, digits} = parse_map(input)
-#    IO.puts("Part one: #{part_one(digits, symbols)}.")
+    IO.puts("Part one: #{part_one(digits, symbols)}.")
     IO.puts("Part two: #{part_two(digits, symbols)}.")
   end
 end
