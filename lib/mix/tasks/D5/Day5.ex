@@ -56,6 +56,17 @@ defmodule Mix.Tasks.Day5 do
     end)
   end
 
+  def resolve_location_reverse(location, map_ranges) do
+    map_ranges
+    |> Enum.find_value(nil, fn range ->
+      cond do
+        # D - S - L, e.g. 52 - 50 - 57 (57 -> 55)
+        # Check whether the computed value exists in the next (upper) map (in any of its ranges).
+        # If not we missed the range and should try with next location.
+      end
+    end)
+  end
+
   defp part_one([seeds, almanac]) do
     seeds
     |> Enum.map(fn seed ->
@@ -67,10 +78,10 @@ defmodule Mix.Tasks.Day5 do
   end
 
   defp part_two([seeds, almanac]) do
-    seed_ranges = Enum.chunk_every(seeds, 2, 2)
-
-    IO.inspect(seed_ranges, charlists: :as_lists)
-
+    # TODO:
+    # Find minimum location and start resolving maps in reverse.
+    # First successful reverse resolution of all maps means lowest location.
+    # Start from location 0 and increase until resolved to valid seed (meaning, result is in seed range)
     :noop
   end
 
