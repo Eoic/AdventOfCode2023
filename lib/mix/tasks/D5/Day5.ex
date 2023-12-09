@@ -77,8 +77,7 @@ defmodule Mix.Tasks.Day5 do
   defp part_two([seeds, almanac]) do
     seeds
     |> Enum.chunk_every(2, 2)
-    |> Enum.with_index(1)
-    |> Parallel.map(fn {[start, offset], index} ->
+    |> Parallel.map(fn [start, offset] ->
       start..(start + offset)
       |> Enum.reduce(:infinity, fn seed, min_location ->
         current_location =
