@@ -69,7 +69,34 @@ defmodule Mix.Tasks.Day7 do
     |> (&(length(&1) === 5)).()
   end
 
-  defp get_hand_score(hand) do
+  defp upgrade_hand_by_wildcard(hand) do
+    if Enum.uniq(hand) |> length() === 1 do
+      Enum.map(hand, fn _ -> "A" end)
+    else
+      {key, _} =
+        hand
+        |> Enum.filter(fn card -> card !== "J" end)
+        |> Enum.frequencies()
+        |> Enum.max_by(fn {_, value} -> value end)
+
+      Enum.map(hand, fn item ->
+        if item === "J" do
+          key
+        else
+          item
+        end
+      end)
+    end
+  end
+
+  defp get_hand_score(hand, with_wildcards) do
+    current_hand =
+      if with_wildcards and Enum.member?(hand, "J") do
+        upgrade_hand_by_wildcard(hand)
+      else
+        hand
+      end
+
     [
       &is_five_of_a_kind?/1,
       &is_four_of_a_kind?/1,
@@ -81,7 +108,7 @@ defmodule Mix.Tasks.Day7 do
     ]
     |> Enum.with_index(1)
     |> Enum.find_value(fn {predicate, score} ->
-      if predicate.(hand), do: 8 - score
+      if predicate.(current_hand), do: 8 - score
     end)
   end
 
@@ -97,13 +124,13 @@ defmodule Mix.Tasks.Day7 do
     end)
   end
 
-  defp compare_same_type_hands(left_hand, right_hand) do
+  defp compare_same_type_hands(left_hand, right_hand, card_strengths) do
     0..4
     |> Enum.reduce_while(0, fn index, comp ->
       left_hand_card = left_hand.cards |> Enum.at(index)
       right_hand_card = right_hand.cards |> Enum.at(index)
-      score_left = Map.get(@card_strengths, left_hand_card)
-      score_right = Map.get(@card_strengths, right_hand_card)
+      score_left = Map.get(card_strengths, left_hand_card)
+      score_right = Map.get(card_strengths, right_hand_card)
 
       cond do
         score_left > score_right -> {:halt, 1}
@@ -113,16 +140,28 @@ defmodule Mix.Tasks.Day7 do
     end)
   end
 
-  defp calculate_winnings(hands) do
+  defp calculate_winnings(hands, with_wildcards \\ false) do
+    card_strengths =
+      if with_wildcards do
+        Map.put(@card_strengths, "J", 1)
+      else
+        @card_strengths
+      end
+
     hands
-    |> Enum.sort_by(&(&1), fn left_hand, right_hand ->
-      left_score = get_hand_score(left_hand.cards)
-      right_score = get_hand_score(right_hand.cards)
+    |> Enum.sort_by(& &1, fn left_hand, right_hand ->
+      left_score = get_hand_score(left_hand.cards, with_wildcards)
+      right_score = get_hand_score(right_hand.cards, with_wildcards)
 
       cond do
-        left_score > right_score -> false
-        left_score < right_score -> true
-        left_score === right_score -> compare_same_type_hands(left_hand, right_hand) <= 0
+        left_score > right_score ->
+          false
+
+        left_score < right_score ->
+          true
+
+        left_score === right_score ->
+          compare_same_type_hands(left_hand, right_hand, card_strengths) <= 0
       end
     end)
     |> Enum.with_index(1)
@@ -135,8 +174,8 @@ defmodule Mix.Tasks.Day7 do
     calculate_winnings(hands)
   end
 
-  defp part_two(_input) do
-    :noop
+  defp part_two(hands) do
+    calculate_winnings(hands, true)
   end
 
   def run(_) do
