@@ -8,6 +8,14 @@ defmodule Mix.Tasks.Day5 do
     defstruct [:source, :destination, :length]
   end
 
+  defmodule Parallel do
+    def map(collection, func) do
+      collection
+      |> Enum.map(&Task.async(fn -> func.(&1) end))
+      |> Enum.map(&Task.await(&1, :infinity))
+    end
+  end
+
   def input_to_ranges(input) do
     lines = String.split(input, "\n", trim: true)
 
@@ -56,20 +64,9 @@ defmodule Mix.Tasks.Day5 do
     end)
   end
 
-  def resolve_location_reverse(location, map_ranges) do
-    map_ranges
-    |> Enum.find_value(nil, fn range ->
-      cond do
-        # D - S - L, e.g. 52 - 50 - 57 (57 -> 55)
-        # Check whether the computed value exists in the next (upper) map (in any of its ranges).
-        # If not we missed the range and should try with next location.
-      end
-    end)
-  end
-
   defp part_one([seeds, almanac]) do
     seeds
-    |> Enum.map(fn seed ->
+    |> Parallel.map(fn seed ->
       Enum.reduce(0..6, seed, fn index, location ->
         resolve_location(location, Map.get(almanac, index))
       end)
@@ -78,11 +75,25 @@ defmodule Mix.Tasks.Day5 do
   end
 
   defp part_two([seeds, almanac]) do
-    # TODO:
-    # Find minimum location and start resolving maps in reverse.
-    # First successful reverse resolution of all maps means lowest location.
-    # Start from location 0 and increase until resolved to valid seed (meaning, result is in seed range)
-    :noop
+    seeds
+    |> Enum.chunk_every(2, 2)
+    |> Enum.with_index(1)
+    |> Parallel.map(fn {[start, offset], index} ->
+      start..(start + offset)
+      |> Enum.reduce(:infinity, fn seed, min_location ->
+        current_location =
+          Enum.reduce(0..6, seed, fn index, location ->
+            resolve_location(location, Map.get(almanac, index))
+          end)
+
+        if current_location < min_location do
+          current_location
+        else
+          min_location
+        end
+      end)
+    end)
+    |> Enum.min()
   end
 
   def run(_) do
