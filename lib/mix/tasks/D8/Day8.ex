@@ -2,15 +2,14 @@ defmodule Mix.Tasks.Day8 do
   use Mix.Task
   import InputUtils
 
-  @input_path "input_sample.txt"
+  @input_path "input.txt"
 
   defmodule MapTrace do
     defstruct [
+      :start_path,
+      :end_paths,
       :directions,
       :directions_length,
-      input: ["AAA"],
-      initial_input_length: 1,
-      is_concurrent: false,
       step_count: 0,
       direction_index: 0
     ]
@@ -41,53 +40,43 @@ defmodule Mix.Tasks.Day8 do
   end
 
   def direction_to_output_index(directions, direction_index) do
-    key = Enum.at(directions, direction_index)
-    if key === "L", do: 0, else: 1
-  end
-
-  def is_output_reached(map_trace) do
-    length(map_trace.input) === map_trace.initial_input_length and
-      Enum.all?(map_trace.input, fn token -> String.ends_with?(token, "Z") end)
+    if Enum.at(directions, direction_index) === "L", do: 0, else: 1
   end
 
   def trace_path(map, map_trace) do
     output_index = direction_to_output_index(map_trace.directions, map_trace.direction_index)
 
-    output =
-      Parallel.map(map_trace.input, fn input ->
-        map
-        |> Map.get(:nodes)
-        |> Map.get(input)
-        |> Enum.at(output_index)
-      end)
+    end_path =
+      map
+      |> Map.get(:nodes)
+      |> Map.get(map_trace.start_path)
+      |> Enum.at(output_index)
 
     map_trace_updated = %{
       map_trace
-      | input: output,
+      | start_path: end_path,
         direction_index: rem(map_trace.direction_index + 1, map_trace.directions_length),
         step_count: map_trace.step_count + 1
     }
 
-    if map_trace.is_concurrent do
-      if is_output_reached(map_trace_updated) do
-        map_trace_updated.step_count
-      else
-        trace_path(map, map_trace_updated)
-      end
+    if Enum.member?(map_trace.end_paths, map_trace.start_path) do
+      map_trace.step_count
     else
-      if map_trace.input === ["ZZZ"] do
-        map_trace.step_count
-      else
-        trace_path(map, map_trace_updated)
-      end
+      trace_path(map, map_trace_updated)
     end
   end
 
-  def collect_start_nodes(map) do
+  def collect_terminal_nodes(map) do
     map
     |> Map.get(:nodes)
     |> Map.keys()
-    |> Enum.filter(&String.ends_with?(&1, "A"))
+    |> Enum.reduce({[], []}, fn path, {start_paths, end_paths} ->
+      cond do
+        String.ends_with?(path, "A") -> {[path | start_paths], end_paths}
+        String.ends_with?(path, "Z") -> {start_paths, [path | end_paths]}
+        true -> {start_paths, end_paths}
+      end
+    end)
   end
 
   def part_one(map) do
@@ -96,6 +85,8 @@ defmodule Mix.Tasks.Day8 do
     trace_path(
       map,
       %MapTrace{
+        start_path: "AAA",
+        end_paths: ["ZZZ"],
         directions: directions,
         directions_length: length(directions)
       }
@@ -103,19 +94,27 @@ defmodule Mix.Tasks.Day8 do
   end
 
   def part_two(map) do
-    input = collect_start_nodes(map)
+    {start_paths, end_paths} = collect_terminal_nodes(map)
     directions = Map.get(map, :directions)
 
-    trace_path(
-      map,
-      %MapTrace{
-        directions: directions,
-        directions_length: length(directions),
-        input: input,
-        initial_input_length: length(input),
-        is_concurrent: true
-      }
-    )
+    start_paths
+    |> Parallel.map(fn path ->
+      trace_path(
+        map,
+        %MapTrace{
+          start_path: path,
+          end_paths: end_paths,
+          directions: directions,
+          directions_length: length(directions)
+        }
+      )
+    end)
+    |> then(fn step_counts ->
+      tl(step_counts)
+      |> Enum.reduce(Enum.at(step_counts, 0), fn count, gcd ->
+        trunc(gcd * count / Integer.gcd(gcd, count))
+      end)
+    end)
   end
 
   def run(_) do
