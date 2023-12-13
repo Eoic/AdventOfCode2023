@@ -4,6 +4,20 @@ defmodule Mix.Tasks.Day10 do
 
   @input_path "input_sample.txt"
 
+  @inverse_connector %{
+    :left => :right,
+    :right => :left,
+    :top => :bottom,
+    :bottom => :top
+  }
+
+  @direction_to_delta %{
+    :left => [-1, 0],
+    :top => [0, -1],
+    :right => [1, 0],
+    :bottom => [0, 1]
+  }
+
   def get_cell_connectors(cell) do
     case cell do
       "|" -> [:top, :bottom]
@@ -43,36 +57,15 @@ defmodule Mix.Tasks.Day10 do
   end
 
   def can_go_to?(map, [current_x, current_y], direction_to) do
-    [x, y] =
-      case direction_to do
-        :left -> [-1, 0]
-        :top -> [0, -1]
-        :right -> [1, 0]
-        :bottom -> [0, 1]
-      end
-
+    [x, y] = Map.get(@direction_to_delta, direction_to)
     [new_x, new_y] = [x + current_x, y + current_y]
 
     if new_x >= Map.get(map, :width) or new_y >= Map.get(map, :height) or new_x < 0 or new_y < 0 do
       false
     else
-      cell = Map.get(map, [new_x, new_y])
-
       cond do
-        direction_to == :left and Enum.member?(cell, :right) ->
-          true
-
-        direction_to == :right and Enum.member?(cell, :left) ->
-          true
-
-        direction_to == :top and Enum.member?(cell, :bottom) ->
-          true
-
-        direction_to == :bottom and Enum.member?(cell, :top) ->
-          true
-
-        true ->
-          false
+        Enum.member?(Map.get(map, [new_x, new_y]), Map.get(@inverse_connector, direction_to)) -> true
+        true -> false
       end
     end
   end
@@ -83,7 +76,7 @@ defmodule Mix.Tasks.Day10 do
 
   def part_one(map) do
     IO.inspect(["Starting position at", Map.get(map, :start)])
-    IO.puts("Can go: #{can_go_to?(map, [1, 1], :right)}.")
+    IO.puts("Can go: #{can_go_to?(map, [1, 1], :left)}.")
     :noop
   end
 
